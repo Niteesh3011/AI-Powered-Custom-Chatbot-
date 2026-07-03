@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any, Dict, List 
 
 # pyrefly: ignore [missing-import]
-from langchain.chains import RetrievalQA 
+from langchain.chains import ConversationalRetrievalChain 
 # pyrefly: ignore [missing-import]
 from langchain_core.prompts import PromptTemplate 
 # pyrefly: ignore [missing-import]
@@ -60,7 +60,7 @@ def get_llm() -> ChatOpenAI:
         max_tokens=MAX_TOKENS_RESPONSE,
     )
 
-def get_rag_chain() -> RetrievalQA:
+def get_rag_chain() -> ConversationalRetrievalChain:
     """
     Construct and return the medical RAG chain.
     """
@@ -73,11 +73,10 @@ def get_rag_chain() -> RetrievalQA:
         input_variables=["context", "question"],
     )
 
-    chain = RetrievalQA.from_chain_type(
+    chain = ConversationalRetrievalChain.from_llm(
         llm=llm,
-        chain_type="stuff",
         retriever=retriever,
-        chain_type_kwargs={"prompt": prompt},
+        combine_docs_chain_kwargs={"prompt": prompt},
         return_source_documents=True,
     )
     logger.info("RAG chain initialized successfully")
@@ -98,10 +97,10 @@ if __name__ == "__main__":
     try:
         chain = get_rag_chain()
         print(f"\nAsking: '{args.query}'\n")
-        response = chain.invoke({"query": args.query})
+        response = chain.invoke({"question": args.query, "chat_history": []})
         
         print("--- ANSWER ---")
-        print(response.get("result"))
+        print(response.get("answer"))
         print("\n--- SOURCES ---")
         for idx, doc in enumerate(response.get("source_documents", [])):
             print(f"[{idx+1}] Page {doc.metadata.get('page')} ({doc.metadata.get('source')})")

@@ -32,7 +32,7 @@ CHUNK_OVERLAP: int = int(os.getenv("CHUNK_OVERLAP", "100"))
 
 FLASK_ENV: str        = os.getenv("FLASK_ENV", "development")
 FLASK_SECRET_KEY: str = os.getenv("FLASK_SECRET_KEY", "dev-secret")
-FLASK_PORT: int       = int(os.getenv("FLASK_PORT", "5000"))
+FLASK_PORT: int       = int(os.getenv("PORT", os.getenv("FLASK_PORT", "5000")))
 FLASK_DEBUG: bool     = FLASK_ENV == "development"
 
 LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")

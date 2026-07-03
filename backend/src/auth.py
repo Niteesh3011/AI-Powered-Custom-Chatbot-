@@ -30,16 +30,16 @@ def create_token(user_id:str,email:str) -> str:
     }
     return jwt.encode(payload,JWT_SECRET,algorithm="HS256")
 
-def verify_token(token:str) -> Tuple[Dict[str,Any],str] | Tuple[None,str] :
+def verify_token(token:str) -> Tuple[Dict[str,Any]|None, str, int]:
     try:
         payload=jwt.decode(token,JWT_SECRET,algorithms=["HS256"])
-        return {"Valid":True,"user_id":payload['user_id'],"email":payload['email']},200
+        return {"Valid":True,"user_id":payload['user_id'],"email":payload['email']}, "Valid token", 200
     except jwt.ExpiredSignatureError:
         return None,"Token expired",401
     except jwt.InvalidTokenError:
         return None,"Invalid token",401
 
-def register_user(email:str,password:str,full_name:str) -> Dict[str,Any]:
+def register_user(email:str,password:str,full_name:str) -> Tuple[Dict[str,Any], int]:
     logger.info(f"Registering new user with email: {email}")
     if not email or not password or not full_name:
         return {"error":"Email, password and fullname are required"},400
@@ -48,28 +48,30 @@ def register_user(email:str,password:str,full_name:str) -> Dict[str,Any]:
         response=supabase.table("users").select("id").eq("email",email).execute()
         if response.data:
             return {"error":"User already exists"},400
-        response=supabase.table("users").insert({"email":email,"password":hashed_password,"full_name":full_name}).execute()
+        response=supabase.table("users").insert({"email":email,"password_hash":hashed_password,"full_name":full_name}).execute()
         return {"message":"User registered successfully"},200
     except Exception as e:
+        logger.exception("Error in register_user")
         return {"error":str(e)},500
         
 
-def login(email:str,password:str) -> Dict[str,Any]:
+def login(email:str,password:str) -> Tuple[Dict[str,Any], int]:
     if not email or not password:
         return {"error":"Email and password are required"},400
     try:
-        response=supabase.table("users").select("id,email,password").eq("email",email).execute()
+        response=supabase.table("users").select("id,email,password_hash,full_name").eq("email",email).execute()
         if not response.data:
             return {"error":"User not found"},404
         user=response.data[0]
-        if not verify_password(password,user["password"]):
+        if not verify_password(password,user["password_hash"]):
             return {"error":"Invalid password"},401
         token=create_token(user["id"],user["email"])
         return {
             "success":True,
             "token":token,
-            "user":{"id":user["id"],"email":user["email"],"full_name":user["full_name"]},
+            "user":{"id":user["id"],"email":user["email"],"full_name":user.get("full_name", "")},
             "message":"Login successful"
-        }
+        }, 200
     except Exception as e:
+        logger.exception("Error in login")
         return {"error":str(e)},500
